@@ -36,8 +36,10 @@ function segmentsOf (Breaker, text, options) {
   return out;
 }
 
+// No timestamp: the output must be a pure function of the build, otherwise the Pages
+// freshness check and any byte-level packaging check would flag it as changed on every
+// run for no reason.
 const evidence = {
-  generatedAt: new Date().toISOString(),
   node: process.version,
   icu: process.versions.icu,
   capabilities: LineBreaker.saCapabilities(),
