@@ -1,53 +1,76 @@
 {
-  "name": "linebreak",
-  "version": "1.1.0",
-  "description": "An implementation of the Unicode Line Breaking Algorithm (UAX #14)",
-  "source": "src/linebreaker.js",
+  "name": "sabreak",
+  "version": "1.0.0",
+  "description": "UAX #14 line breaking with dictionary analysis for Complex Context Dependent (SA) scripts",
+  "source": "src/index.esm.js",
   "type": "module",
   "main": "dist/main.cjs",
   "module": "dist/module.mjs",
   "exports": {
-    "import": "./dist/module.mjs",
-    "require": "./dist/main.cjs"
+    ".": {
+      "import": "./dist/module.mjs",
+      "require": "./dist/main.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "sabreak": "bin/sabreak.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "bin",
+    "NOTICE"
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/devongovett/linebreaker.git"
+    "url": "git+https://github.com/llinok111/sabreak.git"
   },
   "keywords": [
     "unicode",
-    "text",
-    "wrapping"
+    "uax14",
+    "line-breaking",
+    "wrapping",
+    "thai",
+    "khmer",
+    "lao",
+    "myanmar",
+    "segmentation",
+    "icu"
   ],
-  "author": "Devon Govett <devongovett@gmail.com>",
+  "author": "llinok111",
+  "contributors": [
+    "Devon Govett <devongovett@gmail.com> (upstream linebreak)"
+  ],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/devongovett/linebreaker/issues"
+    "url": "https://github.com/llinok111/sabreak/issues"
   },
-  "homepage": "https://github.com/devongovett/linebreaker",
+  "homepage": "https://github.com/llinok111/sabreak",
+  "engines": {
+    "node": ">=16"
+  },
   "dependencies": {
     "unicode-trie": "^2.0.0"
   },
   "devDependencies": {
+    "linebreak": "^1.1.0",
     "mocha": "^10.0.0",
-    "parcel": "^2.13.3",
-    "request": "^2.88.0"
+    "parcel": "^2.13.3"
   },
   "scripts": {
-    "test": "parcel build && mocha test/index.js --reporter landing",
-    "build": "parcel build",
+    "test": "parcel build && node scripts/sync-demo.mjs && mocha test/index.js test/sabreak.test.js test/package.test.js --reporter landing",
+    "build": "parcel build && node scripts/sync-demo.mjs",
     "prepublishOnly": "parcel build"
   },
   "targets": {
     "main": {
+      "source": "src/index.cjs.js",
       "includeNodeModules": [
         "fs"
       ]
     },
     "module": {
+      "source": "src/index.esm.js",
       "includeNodeModules": [
         "fs"
       ]

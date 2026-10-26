@@ -1,0 +1,12 @@
+{
+  "upstream": "foliojs/linebreak",
+  "commit": "dc9603e8e58ce0e6d431cc5087ffb98132cc6a07",
+  "files": {
+    "src/linebreaker.js": "b9e8231963d78ab370ea88d9aefebc4625d6ded1ea2a7d47c05b7cb5eab198db",
+    "src/classes.js": "ab7632ddd76daef8ac456008e64c388a61ddd1b5cb8dc2fed50adac854254baf",
+    "src/pairs.js": "b05ea2f49cc0b8ffe7df78de69a30c1dcf058981bc5fcd7f16b416339b1d40dc",
+    "src/classes-trie-data.js": "68955df60a7696bf9df033579561c260b55213979a0268c6877fb9572238f129",
+    "src/generate_data.js": "fe1f690d1d358bb56e2aa6292ad5eb0d6a2b426136d1cdb2d4d77528a4ff67bc",
+    "test/LineBreakTest.txt": "371bde4052aa593b108684ae292d8ea2dbb93c19990e0cdf416fa7239557aac3"
+  }
+}

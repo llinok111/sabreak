@@ -1,0 +1,32 @@
+sabreak
+=======
+
+This package is a derivative work of `linebreak` (UAX #14 line breaking, MIT),
+https://github.com/foliojs/linebreak
+
+Upstream source is vendored unmodified at commit
+  dc9603e8e58ce0e6d431cc5087ffb98132cc6a07
+The exact files and their SHA-256 digests are recorded in
+  test/fixtures/upstream-hashes.json
+and re-verified by `test/package.test.js` on every test run.
+
+Upstream licence: MIT, Copyright (c) 2014-present Devon Govett.
+The full licence text is in LICENSE; the upstream copyright notice is retained there.
+
+Files added by this project
+  src/sabreak.js                      dictionary analysis layer for SA-class scripts
+  bin/sabreak.js                      command line inspector
+  test/sabreak.test.js                behavioural, equivalence and oracle tests
+  test/package.test.js                packaging, attribution and version-floor tests
+  test/fixtures/browser-oracle.json   line-break positions recorded from a real browser
+  test/fixtures/upstream-hashes.json  provenance pin for the vendored upstream files
+  scripts/record-oracle.mjs           regenerates the browser oracle (needs a browser)
+
+One upstream file was changed, and only its import specifier
+  test/index.js       `from 'linebreak'` -> `from 'sabreak'`
+                      (self-reference after the rename; every test case is untouched)
+
+Unicode data
+  The Unicode Character Database files (LineBreak.txt, LineBreakTest.txt) are
+  Copyright (c) Unicode, Inc. and distributed under the Unicode Terms of Use,
+  https://www.unicode.org/terms_of_use.html

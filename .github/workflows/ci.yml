@@ -1,0 +1,55 @@
+name: CI
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        # The declared floor is Node 16; every entry here must actually pass.
+        node: [16.x, 18.x, 20.x, 22.x]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - name: Report ICU availability on this runtime
+        run: node bin/sabreak.js --capabilities
+      - name: Fail if the runtime cannot segment SA scripts
+        run: node -e "const L=require('./dist/main.cjs'); const c=L.saCapabilities(); if(!c.dictionary){console.error('no dictionary:', c.reason); process.exit(1)} console.log('probe words:', c.probeWords)"
+
+  # Downstream proof is separated because it needs a font-capable renderer and is
+  # slower than the unit suite.
+  downstream:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+      - run: npm ci --no-audit --no-fund
+      - run: npm i -D --no-save pdfkit
+      - run: node scripts/downstream-pdfkit.cjs upstream > /tmp/upstream.json
+      - run: node scripts/downstream-pdfkit.cjs sabreak > /tmp/sabreak.json
+      - name: Assert PDFKit stops splitting SA words
+        run: |
+          node -e "
+          const fs=require('fs');
+          const a=JSON.parse(fs.readFileSync('/tmp/upstream.json','utf8'));
+          const b=JSON.parse(fs.readFileSync('/tmp/sabreak.json','utf8'));
+          const pick=(d,n)=>d.rows.find(r=>r.name===n);
+          for (const name of ['Thai','Lao','Myanmar']) {
+            const before=pick(a,name), after=pick(b,name);
+            console.log(name, 'inside-word breaks', before.totalBreaksInsideWord, '->', after.totalBreaksInsideWord);
+            if (after.totalBreaksInsideWord !== 0) { console.error('regression'); process.exit(1); }
+          }
+          const latinBefore=pick(a,'Latin'), latinAfter=pick(b,'Latin');
+          if (latinAfter.totalBreaksInsideWord !== latinBefore.totalBreaksInsideWord) {
+            console.error('non-SA behaviour changed'); process.exit(1);
+          }
+          "
