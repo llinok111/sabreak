@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import assert from 'node:assert';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -77,6 +77,43 @@ describe('sabreak: package invariants', () => {
     const out = execFileSync(process.execPath, [path.join(ROOT, 'bin', 'sabreak.js'), '--capabilities'], { cwd: ROOT, encoding: 'utf8' });
     const caps = JSON.parse(out);
     assert.strictEqual(typeof caps.dictionary, 'boolean');
+  });
+
+  it('keeps the committed demo evidence consistent with the library', async () => {
+    // The evidence file also records the node/icu version it was produced on, so it can
+    // never be byte-compared across machines. What must not drift is the segmentation
+    // data itself: recompute it here and compare only that.
+    const evidencePath = path.join(ROOT, 'demo', 'evidence.mjs');
+    const committed = (await import(pathToFileURL(evidencePath).href)).default;
+    const { default: Sabreak } = await import('sabreak');
+    const { default: Stock } = await import('linebreak');
+
+    const segmentsOf = (Breaker, text, options) => {
+      const b = new Breaker(text, options);
+      const out = [];
+      let last = 0;
+      let bk;
+      while ((bk = b.nextBreak())) { out.push({ position: bk.position, text: text.slice(last, bk.position) }); last = bk.position; }
+      return out;
+    };
+
+    for (const sample of committed.samples) {
+      assert.deepStrictEqual(
+        segmentsOf(Sabreak, sample.text).map(r => [r.position, r.text]),
+        sample.sabreakSegments.map(r => [r.position, r.text]),
+        `demo evidence is stale for ${sample.label}`
+      );
+      assert.deepStrictEqual(
+        segmentsOf(Stock, sample.text).map(r => [r.position, r.text]),
+        sample.upstreamSegments.map(r => [r.position, r.text]),
+        `demo evidence upstream data is stale for ${sample.label}`
+      );
+      assert.deepStrictEqual(
+        Sabreak.saBreakOpportunities(sample.text),
+        sample.dictionaryPositions,
+        `demo evidence dictionary positions are stale for ${sample.label}`
+      );
+    }
   });
 
   it('exports the documented surface from the build', async () => {

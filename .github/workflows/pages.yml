@@ -27,13 +27,11 @@ jobs:
         with:
           node-version: 22.x
       - run: npm ci --no-audit --no-fund
+      # Regenerate rather than diff: the evidence records the runtime it was produced
+      # on (node/icu version), so a byte comparison against a commit made on another
+      # machine would always fail. Staleness of the *segmentation data* is asserted
+      # environment-independently by test/package.test.js instead.
       - run: npm run build
-      - run: |
-          if ! git diff --quiet -- demo/evidence.mjs; then
-            echo "::error::demo/evidence.mjs is stale — run npm run build and commit the result"
-            git diff --stat -- demo/evidence.mjs
-            exit 1
-          fi
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
