@@ -157,6 +157,41 @@ describe('sabreak: dictionary break opportunities', () => {
   });
 });
 
+describe('sabreak: orphan combining marks', () => {
+  // Regression guard for a real defect found by running the Unicode 17.0 suite
+  // (LineBreakTest rows 14595 and 14871). A combining mark with no base in front of it
+  // starts its own grapheme cluster (UAX #29 GB999), so a cluster-boundary check alone
+  // lets a break land immediately after it — while LB28 forbids exactly that, and the
+  // official expectation is "no break". The first attempt at a fix ("no break right
+  // after any mark") then deleted every Burmese break, because Myanmar syllables end in
+  // U+103A ASAT, which is also a mark. Both halves of that lesson are pinned here.
+  const ORPHAN_CASES = [
+    { label: 'Thai MAI HAN-AKAT + KO KAI', text: String.fromCodePoint(0x0e31, 0x0e01) },
+    { label: 'Myanmar VOWEL SIGN AA + KO KAI', text: String.fromCodePoint(0x102c, 0x0e01) }
+  ];
+
+  it('never breaks between an orphan mark and the following base character', () => {
+    for (const { label, text } of ORPHAN_CASES) {
+      assert.deepStrictEqual(saBreakOpportunities(text), [], `${label}: must not offer a break`);
+      assert.deepStrictEqual(
+        segments(LineBreaker, text).map(r => r.text),
+        segments(Upstream, text).map(r => r.text),
+        `${label}: must match upstream`
+      );
+    }
+  });
+
+  it('still breaks after a mark that has a base to attach to', () => {
+    // Myanmar is the case that a category-only rule broke: without these breaks the
+    // sample collapses to a single segment, i.e. the bug this package exists to fix.
+    const myanmar = SA_SAMPLES.Myanmar;
+    assert.ok(
+      segments(LineBreaker, myanmar).length > 5,
+      `Myanmar must keep its break opportunities, got ${segments(LineBreaker, myanmar).length}`
+    );
+  });
+});
+
 describe('sabreak: upstream equivalence on non-SA text', () => {
   it('is identical to upstream on a mixed corpus', () => {
     for (const text of NON_SA_CORPUS) {

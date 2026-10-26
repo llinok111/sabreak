@@ -49,10 +49,10 @@ out as **one unbreakable run**:
 
 | text | chars | `linebreak` segments | `sabreak` segments |
 |---|---|---|---|
-| Thai | 81 | **1** | 18 |
-| Lao | 61 | **1** | 11 |
-| Myanmar | 53 | **1** | 12 |
-| Khmer | 49 | 3 | 8 |
+| Thai | 81 | **1** | 19 |
+| Lao | 61 | **1** | 12 |
+| Myanmar | 53 | **1** | 13 |
+| Khmer | 49 | 3 | 9 |
 | Latin | 67 | 9 | 9 (identical) |
 
 Nothing downstream can fix this: `linebreak` never reports the missed opportunity.
@@ -67,8 +67,14 @@ Unicode 15.0 and 17.0 the SA code point set changes by **one** character.
 1. Finds maximal runs of SA-class code points using the same Unicode trie as upstream.
 2. Asks the runtime's ICU dictionary segmenter (`Intl.Segmenter`, word granularity)
    where the words are inside those runs.
-3. Keeps a position only if it is **strictly inside** a run and lands on a **grapheme
-   cluster boundary**, then merges it into the upstream break stream — in order,
+3. Keeps a position only if it is **strictly inside** a run, lands on a **grapheme
+   cluster boundary**, and is not the boundary right after a *stray* mark — a cluster
+   made only of combining marks that sits at the very start of the run, with no base
+   character anywhere before it (UAX #14 LB28 forbids a break there; official suite rows
+   14595 and 14871 assert it). Marks that do have a base — Myanmar syllable finals such
+   as U+103A ASAT, U+1038 — are left alone, because ICU legitimately reports word
+   boundaries after them and a real browser uses them.
+4. Merges the surviving positions into the upstream break stream — in order,
    duplicate-free, and never relabelling a required hard break.
 
 Run edges are left alone: they are ordinary SA/AL transitions that the pair table
@@ -89,7 +95,7 @@ already resolves, so touching them would be a behaviour change rather than a tai
 
 ```sh
 npm ci
-npm test          # parcel build + 7629 assertions, 59 pending
+npm test          # parcel build + 7637 assertions, 59 pending
 
 node bin/sabreak.js --capabilities
 node bin/sabreak.js --json "การพัฒนาซอฟต์แวร์"
@@ -99,7 +105,7 @@ echo "ການພັດທະນາ" | node bin/sabreak.js --only-sa
 `npm test` output on the development machine (Node 22.22.2, ICU 78.2, Windows):
 
 ```
-7629 passing (1s)
+7637 passing (1s)
   59 pending
 ```
 
@@ -139,9 +145,15 @@ Everything above is measured. Where the numbers come from:
 - **UAX #14 conformance** — `test/LineBreakTest.txt` (Unicode 15.0, 7654 cases), the
   same file upstream ships. Both implementations are run over all 7654 and their pass
   counts compared.
-- **Unicode 17.0 cross-check** — against the current official suite upstream passes
-  18227/19328 (94.30%). That gap is upstream's (missing `AK/AP/AS/VF/VI/HH` classes);
-  `sabreak` neither fixes nor widens it, and is out of scope here.
+- **Unicode 17.0 cross-check** — against the current official suite
+  (`LineBreakTest.txt` for 17.0, 19338 cases) upstream passes 18231 (94.28%) and
+  `sabreak` passes 18231 — **exactly the same count**, case for case. That gap is
+  upstream's (missing `AK/AP/AS/VF/VI/HH` classes); `sabreak` neither fixes nor widens
+  it, and is out of scope here.
+  This cross-check is what caught the only tailoring bug found during development: the
+  first version broke between a stray combining mark and the following base character
+  (17.0 rows 14595 and 14871), turning a 94.28% pass rate into 94.27%. The fix narrows
+  the rule to stray marks at the start of a run; see *What `sabreak` does*.
 - **Browser oracle** — `test/fixtures/browser-oracle.json` holds line-break positions
   recorded from a real Chromium (Edge) at six container widths for the four scripts.
   Replay is offline. **55/55** of the browser's non-emergency decisions are present in

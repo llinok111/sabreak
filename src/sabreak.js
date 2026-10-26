@@ -13,6 +13,10 @@ import { SA } from './classes.js';
 const DEFAULT_PROBE = 'การพัฒนาซอฟต์แวร์';
 const PROBE_MIN_WORDS = 3;
 
+// General category M (Mn / Mc / Me). `\p{M}` is supported by the RegExp engine of every
+// runtime that also ships Intl.Segmenter, so this needs no table of its own.
+const MARK_RE = /^\p{M}$/u;
+
 let classTrie = null;
 
 function getClassTrie() {
@@ -126,8 +130,31 @@ export function saBreakOpportunities(text, options = {}) {
 
   const grapheme = getGraphemeSegmenter(options.locale);
   const clusterStarts = grapheme === null ? null : new Set();
-  if (clusterStarts !== null) {
-    for (const s of grapheme.segment(text)) clusterStarts.add(s.index);
+  // End offset -> start offset, for clusters made of nothing but combining marks.
+  //
+  // Two things make this check necessary, and the exact form of it matters:
+  //   1. A cluster-boundary check alone is not enough. A mark with no base in front of
+  //      it starts its own cluster (UAX #29 GB999), so a break may land right after it —
+  //      but UAX #14 LB28 forbids a break there, and the official suite asserts exactly
+  //      that (LineBreakTest 17.0 rows 14595 and 14871, "SA_Mn × SA").
+  //   2. "Never break after a mark" is far too broad. Myanmar syllables end in U+103A
+  //      ASAT and U+1038, which are marks, and ICU legitimately reports word boundaries
+  //      after them; a category-only rule collapsed Burmese from 13 segments to 1 and
+  //      deleted 3 break positions a real browser uses.
+  // The distinguishing feature of the suite rows is that the stray mark sits at the very
+  // start of the run, with no base anywhere before it — there is nothing for it to
+  // attach to. Clusters elsewhere always have a base earlier in the run, so their
+  // boundaries are real word boundaries and must be kept.
+  const orphanClusterStartByEnd = new Map();
+  if (grapheme !== null) {
+    for (const s of grapheme.segment(text)) {
+      clusterStarts.add(s.index);
+      let onlyMarks = true;
+      for (const { cp } of codePoints(s.segment)) {
+        if (!MARK_RE.test(String.fromCodePoint(cp))) { onlyMarks = false; break; }
+      }
+      if (onlyMarks) orphanClusterStartByEnd.set(s.index + s.segment.length, s.index);
+    }
   }
 
   const out = [];
@@ -141,6 +168,7 @@ export function saBreakOpportunities(text, options = {}) {
     // ICU word segments are cluster-aligned by contract; re-check so a future
     // runtime change can never split a combining sequence.
     if (clusterStarts !== null && !clusterStarts.has(pos)) continue;
+    if (orphanClusterStartByEnd.get(pos) === run.start) continue;
     if (out.length === 0 || out[out.length - 1] !== pos) out.push(pos);
   }
   return out;
