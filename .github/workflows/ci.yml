@@ -33,6 +33,8 @@ jobs:
         with:
           node-version: 22.x
       - run: npm ci --no-audit --no-fund
+      - name: Build (the downstream script loads dist/main.cjs)
+        run: npm run build
       - run: npm i -D --no-save pdfkit
       - run: node scripts/downstream-pdfkit.cjs upstream > /tmp/upstream.json
       - run: node scripts/downstream-pdfkit.cjs sabreak > /tmp/sabreak.json
